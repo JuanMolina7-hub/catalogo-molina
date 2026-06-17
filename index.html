@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distribuciones Molina J.A. — Catálogo Web</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;color:#222;min-height:100vh}
+:root{--gd:#0F6E56;--gm:#1D9E75;--gl:#E1F5EE}
+
+/* LOGIN */
+#screen-login{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f4f6f4}
+.login-card{background:#fff;border-radius:16px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.login-logo{text-align:center;margin-bottom:2rem}
+.logo-circle{width:72px;height:72px;border-radius:50%;background:var(--gl);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:32px}
+.login-logo h1{font-size:18px;font-weight:600;line-height:1.3}
+.login-logo p{font-size:13px;color:#666;margin-top:4px}
+.login-logo .eslogan{font-size:13px;color:var(--gd);font-style:italic;margin-top:6px}
+.fg label{display:block;font-size:13px;color:#555;margin-bottom:5px}
+.fg input{width:100%;padding:10px 14px;height:42px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;margin-bottom:1rem;background:#fafafa}
+.fg input:focus{outline:none;border-color:var(--gd);background:#fff}
+.btn-login{width:100%;height:44px;background:var(--gd);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer}
+.btn-login:hover{background:var(--gm)}
+.error-msg{color:#c0392b;font-size:13px;text-align:center;margin-top:.5rem;min-height:18px}
+
+/* NAVBAR */
+.navbar{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:56px;background:var(--gd);position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px;color:#fff}
+.brand-logo{width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px}
+.brand-name{font-size:14px;font-weight:600;line-height:1.2}
+.brand-sub{font-size:10px;opacity:.8}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-user{font-size:12px;color:#fff;background:rgba(255,255,255,.2);padding:4px 12px;border-radius:20px}
+.btn-cart{position:relative;background:rgba(255,255,255,.15);border:none;color:#fff;height:36px;padding:0 14px;border-radius:8px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-cart:hover{background:rgba(255,255,255,.25)}
+.cart-badge{position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.btn-logout{background:rgba(255,255,255,.15);border:none;color:#fff;height:36px;padding:0 12px;border-radius:8px;font-size:13px;cursor:pointer}
+.btn-logout:hover{background:rgba(255,255,255,.25)}
+
+/* CATALOG */
+#screen-main{display:none}
+.catalog-wrap{padding:1.25rem 1.5rem;max-width:1400px;margin:0 auto}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1rem;align-items:center}
+.filters h2{font-size:16px;font-weight:600;flex:1;min-width:120px}
+.search-box{flex:2;min-width:180px;position:relative}
+.search-box input{width:100%;padding-left:36px;height:38px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;background:#fff}
+.search-box .icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#999;font-size:16px}
+.filter-sel{height:38px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;padding:0 10px;background:#fff;max-width:200px}
+.price-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 12px;border-radius:20px;background:var(--gl);color:var(--gd);font-weight:600;margin-bottom:.75rem}
+.result-count{font-size:12px;color:#666;margin-bottom:.75rem}
+
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.product-card{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #eee;display:flex;flex-direction:column;transition:box-shadow .2s}
+.product-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.product-img{width:100%;height:120px;object-fit:cover;background:var(--gl)}
+.product-img-ph{width:100%;height:120px;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--gd)}
+.product-info{padding:.75rem;flex:1;display:flex;flex-direction:column;gap:3px}
+.p-cat{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px}
+.p-name{font-size:12px;font-weight:600;line-height:1.3;color:#222}
+.p-marca{font-size:11px;color:#888}
+.p-price{font-size:16px;font-weight:700;color:var(--gd);margin-top:4px}
+.p-price span{font-size:11px;color:#888;font-weight:400}
+.btn-add{width:100%;height:34px;background:var(--gl);color:var(--gd);border:none;border-radius:0 0 12px 12px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;margin-top:auto}
+.btn-add:hover{background:#9FE1CB}
+.qty-ctrl{display:flex;align-items:center;gap:4px;margin-top:auto;padding:.5rem}
+.qty-btn{width:28px;height:28px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.qty-val{flex:1;text-align:center;font-size:13px;font-weight:600}
+.qty-rm{background:none;border:none;color:#c0392b;font-size:11px;cursor:pointer;width:100%;text-align:center;padding:2px 0}
+
+.pagination{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:1.5rem;flex-wrap:wrap}
+.pag-btn{height:32px;min-width:32px;padding:0 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;cursor:pointer;background:#fff}
+.pag-btn:hover{background:#f0f0f0}
+.pag-btn.active{background:var(--gd);color:#fff;border-color:var(--gd)}
+.pag-info{font-size:12px;color:#666}
+
+/* CART */
+#screen-cart{display:none}
+.cart-wrap{padding:1.25rem 1.5rem;max-width:800px;margin:0 auto}
+.cart-back{display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+.btn-back{height:34px;padding:0 14px;border:1px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;background:#fff;display:flex;align-items:center;gap:6px}
+.cart-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eee}
+.ci-info{flex:1}
+.ci-name{font-size:13px;font-weight:600}
+.ci-sub{font-size:11px;color:#888}
+.ci-price{font-size:14px;font-weight:700;color:var(--gd);min-width:90px;text-align:right}
+.cart-summary{background:#f8f8f8;border-radius:12px;padding:1.25rem;margin-top:1rem}
+.sum-row{display:flex;justify-content:space-between;font-size:13px;color:#666;margin-bottom:6px}
+.sum-total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:1px solid #ddd;padding-top:10px;margin-top:4px}
+.btn-order{width:100%;height:46px;background:var(--gd);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem}
+.btn-order:hover{background:var(--gm)}
+.empty-cart{text-align:center;padding:3rem;color:#aaa;font-size:36px}
+
+/* SUCCESS */
+#screen-success{display:none;align-items:center;justify-content:center;min-height:80vh}
+.success-card{background:#fff;border-radius:16px;padding:2.5rem;text-align:center;max-width:380px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.success-icon{width:72px;height:72px;background:var(--gl);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:32px}
+
+/* LOADING */
+.loading{text-align:center;padding:3rem;color:#888}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--gd);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .3s;z-index:999;pointer-events:none}
+.toast.show{opacity:1}
+
+/* MOBILE */
+@media(max-width:600px){
+  .navbar{padding:0 1rem}
+  .catalog-wrap,.cart-wrap{padding:1rem}
+  .products-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .filters h2{font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-circle">🏢</div>
+      <h1>Distribuciones Molina J.A.<br>Zomac S.A.S.</h1>
+      <p>Distribución mayorista nacional</p>
+      <p class="eslogan">"Más productos, mejores precios, un solo proveedor"</p>
+    </div>
+    <div class="fg">
+      <label>Usuario</label>
+      <input type="text" id="inp-user" placeholder="Tu usuario asignado" autocomplete="username">
+    </div>
+    <div class="fg">
+      <label>Contraseña</label>
+      <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Ingresar al catálogo</button>
+    <div class="error-msg" id="err-msg"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="screen-main">
+  <div class="navbar">
+    <div class="brand">
+      <div class="brand-logo">M</div>
+      <div>
+        <div class="brand-name">Distribuciones Molina J.A.</div>
+        <div class="brand-sub">Zomac S.A.S.</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-user-label"></span>
+      <button class="btn-cart" onclick="showCart()">
+        🛒 <span id="cart-label">Pedido</span>
+        <span class="cart-badge" id="cart-badge" style="display:none">0</span>
+      </button>
+      <button class="btn-logout" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <!-- CATALOG SCREEN -->
+  <div id="screen-catalog">
+    <div class="catalog-wrap">
+      <div class="filters">
+        <h2>Catálogo de productos</h2>
+        <div class="search-box">
+          <span class="icon">🔍</span>
+          <input type="text" id="search-inp" placeholder="Buscar producto, marca o código..." oninput="filterProds()">
+        </div>
+        <select class="filter-sel" id="filter-cat" onchange="filterProds()">
+          <option value="">Todas las categorías</option>
+        </select>
+        <select class="filter-sel" id="filter-marca" onchange="filterProds()">
+          <option value="">Todas las marcas</option>
+        </select>
+      </div>
+      <div class="price-badge">🏷 <span id="price-label">Cargando...</span></div>
+      <div class="result-count" id="result-count"></div>
+      <div class="products-grid" id="products-grid">
+        <div class="loading">Cargando productos...</div>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <!-- CART SCREEN -->
+  <div id="screen-cart" style="display:none">
+    <div class="cart-wrap">
+      <div class="cart-back">
+        <button class="btn-back" onclick="showCatalog()">← Seguir comprando</button>
+        <span style="font-size:16px;font-weight:600">Mi pedido</span>
+      </div>
+      <div id="cart-items-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div id="screen-success">
+  <div class="success-card">
+    <div class="success-icon">✓</div>
+    <h2 style="font-size:18px;margin-bottom:8px">¡Pedido enviado!</h2>
+    <p style="font-size:14px;color:#666;margin-bottom:6px">Tu pedido fue recibido por <strong>Distribuciones Molina J.A.</strong></p>
+    <p style="font-size:13px;color:#888;margin-bottom:1.5rem">Recibirás confirmación por correo pronto.</p>
+    <button class="btn-login" onclick="backToCatalog()">Volver al catálogo</button>
+  </div>
+</div>
+
+<div class="toast" id="toast-el"></div>
+
+<script>
+const SUPABASE_URL = 'https://iqgooitxjaxjkigfiaha.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZ29vaXR4amF4amtpZ2ZpYWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDEyODAsImV4cCI6MjA5NzI3NzI4MH0.JMjKg--4YiQc6hqLQDaBsOXCnTxpXYOkTYI4-B4-VfM';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null, currentList = 'B';
+let allProducts = [], filteredProducts = [], allPrices = {};
+let cart = {}, page = 1;
+const PER_PAGE = 24;
+
+const LIST_NAMES = {
+  'A':'Lista A — Farmacias premium','B':'Lista B — Droguerías',
+  'C':'Lista C — Centros de salud','D':'Lista D — Supermercados',
+  'E':'Lista E — Minimercados','CAQUETA':'Lista Caquetá'
+};
+
+function fmt(n){return '$'+Math.round(n).toLocaleString('es-CO');}
+
+function show(id){
+  ['screen-login','screen-main','screen-success'].forEach(s=>{
+    const el=document.getElementById(s);
+    if(el){el.style.display='none';}
+  });
+  const el=document.getElementById(id);
+  if(el) el.style.display=id==='screen-success'?'flex':'block';
+}
+function showCart(){
+  document.getElementById('screen-catalog').style.display='none';
+  document.getElementById('screen-cart').style.display='block';
+  renderCart();
+}
+function showCatalog(){
+  document.getElementById('screen-cart').style.display='none';
+  document.getElementById('screen-catalog').style.display='block';
+}
+
+async function doLogin(){
+  const u=document.getElementById('inp-user').value.trim().toLowerCase();
+  const p=document.getElementById('inp-pass').value.trim();
+  document.getElementById('err-msg').textContent='';
+  if(!u||!p){document.getElementById('err-msg').textContent='Ingresa usuario y contraseña';return;}
+  const{data,error}=await sb.from('clientes').select('*').eq('usuario',u).eq('password_hash',p).eq('activo',true).single();
+  if(error||!data){document.getElementById('err-msg').textContent='Usuario o contraseña incorrectos';return;}
+  currentUser=data;
+  currentList=data.lista_precios||'B';
+  document.getElementById('nav-user-label').textContent=data.nombre;
+  document.getElementById('price-label').textContent=(LIST_NAMES[currentList]||currentList)+' — '+data.nombre;
+  show('screen-main');
+  await loadProducts();
+}
+
+function logout(){
+  currentUser=null;cart={};allProducts=[];allPrices={};
+  updateCartBadge();
+  show('screen-login');
+}
+
+async function loadProducts(){
+  document.getElementById('products-grid').innerHTML='<div class="loading">Cargando productos...</div>';
+  const[prodRes,priceRes]=await Promise.all([
+    sb.from('productos').select('*').eq('activo',true).order('nombre'),
+    sb.from('precios').select('*').eq('lista',currentList)
+  ]);
+  allProducts=prodRes.data||[];
+  allPrices={};
+  (priceRes.data||[]).forEach(p=>{allPrices[p.producto_id]=p.precio;});
+
+  // If no prices for this list, try CAQUETA
+  if(Object.keys(allPrices).length===0){
+    const r=await sb.from('precios').select('*').eq('lista','CAQUETA');
+    (r.data||[]).forEach(p=>{allPrices[p.producto_id]=p.precio;});
+  }
+
+  // Populate filters
+  const cats=[...new Set(allProducts.map(p=>p.categoria).filter(Boolean))].sort();
+  const marcas=[...new Set(allProducts.map(p=>p.marca).filter(Boolean))].sort();
+  const catSel=document.getElementById('filter-cat');
+  const marcaSel=document.getElementById('filter-marca');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
+  marcas.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;marcaSel.appendChild(o);});
+
+  filterProds();
+}
+
+function filterProds(){
+  const q=(document.getElementById('search-inp').value||'').toLowerCase();
+  const cat=document.getElementById('filter-cat').value;
+  const marca=document.getElementById('filter-marca').value;
+  filteredProducts=allProducts.filter(p=>{
+    return(!q||p.nombre.toLowerCase().includes(q)||p.id.includes(q)||(p.marca||'').toLowerCase().includes(q))
+      &&(!cat||p.categoria===cat)&&(!marca||p.marca===marca);
+  });
+  page=1;renderPage();
+}
+
+function renderPage(){
+  const start=(page-1)*PER_PAGE,end=start+PER_PAGE;
+  const visible=filteredProducts.slice(start,end);
+  document.getElementById('result-count').textContent=filteredProducts.length.toLocaleString('es-CO')+' productos encontrados';
+  const g=document.getElementById('products-grid');
+  if(!visible.length){g.innerHTML='<p style="color:#aaa;padding:2rem">Sin resultados.</p>';renderPag();return;}
+  g.innerHTML=visible.map(p=>{
+    const price=allPrices[p.id]||0;
+    const inCart=cart[p.id]||0;
+    return`<div class="product-card">
+      <div class="product-img-ph">📦</div>
+      <div class="product-info">
+        <div class="p-cat">${p.categoria||''}</div>
+        <div class="p-name">${p.nombre}</div>
+        <div class="p-marca">${p.marca||''}</div>
+        <div class="p-price">${price?fmt(price):'Sin precio'} <span>/ unidad</span></div>
+      </div>
+      ${price===0?'':(inCart===0
+        ?`<button class="btn-add" onclick="addCart('${p.id}')">+ Agregar al pedido</button>`
+        :`<div class="qty-ctrl"><button class="qty-btn" onclick="chgQ('${p.id}',-1)">−</button><span class="qty-val">${inCart}</span><button class="qty-btn" onclick="chgQ('${p.id}',1)">+</button></div>
+          <button class="qty-rm" onclick="chgQ('${p.id}',-${inCart})">Quitar del pedido</button>`
+      )}
+    </div>`;
+  }).join('');
+  renderPag();
+}
+
+function renderPag(){
+  const tp=Math.ceil(filteredProducts.length/PER_PAGE);
+  const pag=document.getElementById('pagination');
+  if(tp<=1){pag.innerHTML='';return;}
+  let h='';
+  if(page>1)h+=`<button class="pag-btn" onclick="goP(${page-1})">‹</button>`;
+  const s=Math.max(1,page-2),e=Math.min(tp,page+2);
+  for(let i=s;i<=e;i++)h+=`<button class="pag-btn${i===page?' active':''}" onclick="goP(${i})">${i}</button>`;
+  if(page<tp)h+=`<button class="pag-btn" onclick="goP(${page+1})">›</button>`;
+  h+=`<span class="pag-info">Página ${page} de ${tp}</span>`;
+  pag.innerHTML=h;
+}
+function goP(p){page=p;renderPage();window.scrollTo(0,0);}
+
+function addCart(id){cart[id]=(cart[id]||0)+1;updateCartBadge();renderPage();}
+function chgQ(id,d){cart[id]=(cart[id]||0)+d;if(cart[id]<=0)delete cart[id];updateCartBadge();renderPage();}
+function updateCartBadge(){
+  const t=Object.values(cart).reduce((a,b)=>a+b,0);
+  const b=document.getElementById('cart-badge');
+  b.textContent=t;b.style.display=t>0?'flex':'none';
+  document.getElementById('cart-label').textContent=t>0?`Pedido (${t})`:'Pedido';
+}
+
+function renderCart(){
+  const el=document.getElementById('cart-items-container');
+  const keys=Object.keys(cart);
+  if(!keys.length){el.innerHTML='<div class="empty-cart">🛒<br><span style="font-size:16px;color:#aaa">Tu pedido está vacío</span></div>';return;}
+  let sub=0;
+  const rows=keys.map(id=>{
+    const p=allProducts.find(x=>x.id===id);if(!p)return'';
+    const price=allPrices[id]||0;const qty=cart[id];const line=price*qty;sub+=line;
+    return`<div class="cart-item">
+      <div class="ci-info"><div class="ci-name">${p.nombre}</div><div class="ci-sub">${p.categoria||''} · ${p.marca||''}</div></div>
+      <div class="qty-ctrl" style="min-width:80px">
+        <button class="qty-btn" onclick="chgQ('${id}',-1);renderCart()">−</button>
+        <span class="qty-val">${qty}</span>
+        <button class="qty-btn" onclick="chgQ('${id}',1);renderCart()">+</button>
+      </div>
+      <div class="ci-price">${fmt(line)}</div>
+    </div>`;
+  }).join('');
+  const units=Object.values(cart).reduce((a,b)=>a+b,0);
+  el.innerHTML=rows+`<div class="cart-summary">
+    <div class="sum-row"><span>${keys.length} referencia(s) · ${units} unidades</span></div>
+    <div class="sum-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
+    <div class="sum-total"><span>Total estimado</span><span>${fmt(sub)}</span></div>
+  </div>
+  <button class="btn-order" onclick="sendOrder()">Enviar pedido a Distribuciones Molina →</button>`;
+}
+
+async function sendOrder(){
+  const keys=Object.keys(cart);if(!keys.length)return;
+  let sub=0;
+  const items=keys.map(id=>{const price=allPrices[id]||0;const qty=cart[id];sub+=price*qty;return{producto_id:id,cantidad:qty,precio_unitario:price};});
+  const{data:ped}=await sb.from('pedidos').insert({cliente_id:currentUser.id,estado:'pendiente',total:sub}).select().single();
+  if(ped){
+    await sb.from('pedido_items').insert(items.map(i=>({...i,pedido_id:ped.id})));
+  }
+  cart={};updateCartBadge();
+  show('screen-success');
+}
+function backToCatalog(){show('screen-main');showCatalog();}
+
+function toast(msg){
+  const t=document.getElementById('toast-el');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>
