@@ -273,12 +273,12 @@ async function loadProducts(){
   ]);
   allProducts=prodRes.data||[];
   allPrices={};
-  (priceRes.data||[]).forEach(p=>{allPrices[p.producto_id]=p.precio;});
+  (priceRes.data||[]).forEach(p=>{allPrices[String(p.producto_id)]=p.precio;});
 
   // If no prices for this list, try CAQUETA
   if(Object.keys(allPrices).length===0){
     const r=await sb.from('precios').select('*').eq('lista','CAQUETA');
-    (r.data||[]).forEach(p=>{allPrices[p.producto_id]=p.precio;});
+    (r.data||[]).forEach(p=>{allPrices[String(p.producto_id)]=p.precio;});
   }
 
   // Populate filters
@@ -310,7 +310,7 @@ function renderPage(){
   const g=document.getElementById('products-grid');
   if(!visible.length){g.innerHTML='<p style="color:#aaa;padding:2rem">Sin resultados.</p>';renderPag();return;}
   g.innerHTML=visible.map(p=>{
-    const price=allPrices[p.id]||0;
+    const price=allPrices[String(p.id)]||0;
     const inCart=cart[p.id]||0;
     return`<div class="product-card">
       <div class="product-img-ph">📦</div>
@@ -360,7 +360,7 @@ function renderCart(){
   let sub=0;
   const rows=keys.map(id=>{
     const p=allProducts.find(x=>x.id===id);if(!p)return'';
-    const price=allPrices[id]||0;const qty=cart[id];const line=price*qty;sub+=line;
+    const price=allPrices[String(id)]||0;const qty=cart[id];const line=price*qty;sub+=line;
     return`<div class="cart-item">
       <div class="ci-info"><div class="ci-name">${p.nombre}</div><div class="ci-sub">${p.categoria||''} · ${p.marca||''}</div></div>
       <div class="qty-ctrl" style="min-width:80px">
@@ -383,7 +383,7 @@ function renderCart(){
 async function sendOrder(){
   const keys=Object.keys(cart);if(!keys.length)return;
   let sub=0;
-  const items=keys.map(id=>{const price=allPrices[id]||0;const qty=cart[id];sub+=price*qty;return{producto_id:id,cantidad:qty,precio_unitario:price};});
+  const items=keys.map(id=>{const price=allPrices[String(id)]||0;const qty=cart[id];sub+=price*qty;return{producto_id:id,cantidad:qty,precio_unitario:price};});
   const{data:ped}=await sb.from('pedidos').insert({cliente_id:currentUser.id,estado:'pendiente',total:sub}).select().single();
   if(ped){
     await sb.from('pedido_items').insert(items.map(i=>({...i,pedido_id:ped.id})));
