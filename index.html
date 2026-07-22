@@ -268,8 +268,8 @@ function logout(){
 async function loadProducts(){
   document.getElementById('products-grid').innerHTML='<div class="loading">Cargando productos...</div>';
   const[prodRes,priceRes]=await Promise.all([
-    sb.from('productos').select('*').eq('activo',true).order('nombre'),
-    sb.from('precios').select('*').eq('lista',currentList)
+    sb.from('productos').select('*').eq('activo',true).order('nombre').range(0,9999),
+    sb.from('precios').select('*').eq('lista',currentList).range(0,9999)
   ]);
   allProducts=prodRes.data||[];
   allPrices={};
@@ -277,7 +277,7 @@ async function loadProducts(){
 
   // If no prices for this list, try CAQUETA
   if(Object.keys(allPrices).length===0){
-    const r=await sb.from('precios').select('*').eq('lista','CAQUETA');
+    const r=await sb.from('precios').select('*').eq('lista','CAQUETA').range(0,9999);
     (r.data||[]).forEach(p=>{allPrices[String(p.producto_id)]=p.precio;});
   }
 
