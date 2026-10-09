@@ -54,8 +54,13 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
 .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
 .product-card{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #eee;display:flex;flex-direction:column;transition:box-shadow .2s}
 .product-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
-.product-img{width:100%;height:120px;object-fit:cover;background:var(--gl)}
-.product-img-ph{width:100%;height:120px;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--gd)}
+.product-img{width:100%;height:150px;object-fit:contain;background:#fff;cursor:zoom-in;display:block;padding:6px;box-sizing:border-box}
+.img-lb{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px;cursor:zoom-out}
+.img-lb.open{display:flex}
+.img-lb img{max-width:96vw;max-height:80vh;object-fit:contain;background:#fff;border-radius:10px}
+.img-lb p{color:#fff;font-size:14px;margin-top:12px;text-align:center;max-width:90vw}
+.img-lb button{position:absolute;top:14px;right:16px;background:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:20px;cursor:pointer}
+.product-img-ph{width:100%;height:150px;background:var(--gl);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--gd)}
 .product-info{padding:.75rem;flex:1;display:flex;flex-direction:column;gap:3px}
 .p-cat{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.4px}
 .p-name{font-size:12px;font-weight:600;line-height:1.3;color:#222}
@@ -320,6 +325,17 @@ function filterProds(){
   page=1;renderPage();
 }
 
+
+function imgUrl(id){return SUPABASE_URL+'/storage/v1/object/public/productos/'+id+'.webp';}
+function openImg(id){
+  const p=allProducts.find(x=>String(x.id)===String(id));
+  document.getElementById('lb-img').src=imgUrl(id);
+  document.getElementById('lb-cap').textContent=p?p.nombre:'';
+  document.getElementById('img-lb').classList.add('open');
+}
+function closeImg(){document.getElementById('img-lb').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeImg();});
+
 function renderPage(){
   const start=(page-1)*PER_PAGE,end=start+PER_PAGE;
   const visible=filteredProducts.slice(start,end);
@@ -330,7 +346,7 @@ function renderPage(){
     const price=allPrices[String(p.id)]||0;
     const inCart=cart[p.id]||0;
     return`<div class="product-card">
-      <div class="product-img-ph">📦</div>
+      <img class="product-img" src="${imgUrl(p.id)}" alt="" loading="lazy" onclick="openImg('${p.id}')" onerror="this.outerHTML='<div class=&quot;product-img-ph&quot;>📦</div>'">
       <div class="product-info">
         <div class="p-cat">${p.categoria||''}</div>
         <div class="p-name">${p.nombre}</div>
@@ -416,5 +432,6 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 </script>
+<div class="img-lb" id="img-lb" onclick="closeImg()"><button onclick="closeImg()" aria-label="Cerrar">×</button><img id="lb-img" alt=""><p id="lb-cap"></p></div>
 </body>
 </html>
