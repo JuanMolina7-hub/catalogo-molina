@@ -80,6 +80,36 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
 .pag-btn.active{background:var(--gd);color:#fff;border-color:var(--gd)}
 .pag-info{font-size:12px;color:#666}
 
+
+/* SIDEBAR CATEGORIAS */
+.catalog-layout{display:flex;align-items:flex-start;gap:1.25rem}
+.catalog-main{flex:1;min-width:0}
+.side{width:250px;flex:0 0 250px;background:#fff;border:1px solid #eee;border-radius:12px;position:sticky;top:72px;max-height:calc(100vh - 90px);overflow-y:auto;padding:.5rem 0}
+.side-head{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem .5rem;font-size:15px;font-weight:700;color:var(--gd)}
+.side-close{display:none;background:none;border:none;font-size:24px;line-height:1;cursor:pointer;color:#555}
+.cat-item{border-top:1px solid #f1f1f1}
+.cat-btn{width:100%;text-align:left;background:none;border:none;padding:10px 1rem;font-size:13px;font-weight:600;color:#333;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cat-btn:hover{background:#f6faf7}
+.cat-btn .arr{font-size:10px;color:#888;transition:transform .2s;flex:0 0 auto}
+.cat-item.open>.cat-btn{background:var(--gl);color:var(--gd)}
+.cat-item.open>.cat-btn .arr{transform:rotate(90deg)}
+.brand-list{display:none;background:#fafafa;padding:4px 0}
+.cat-item.open>.brand-list{display:block}
+.brand-btn{width:100%;text-align:left;background:none;border:none;padding:7px 1rem 7px 1.75rem;font-size:12px;color:#444;cursor:pointer}
+.brand-btn:hover{background:#eef6f0}
+.brand-btn.sel{color:var(--gd);font-weight:700;background:#e3f3e8}
+.btn-cats{display:none;height:38px;padding:0 14px;border:1.5px solid var(--gd);background:#fff;color:var(--gd);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;align-items:center;gap:6px}
+.side-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000}
+.sel-chip{font-size:12px;color:var(--gd);font-weight:600;margin-bottom:.5rem}
+@media(max-width:768px){
+  .catalog-layout{display:block}
+  .btn-cats{display:inline-flex;margin-bottom:.75rem}
+  .side{position:fixed;top:0;left:0;bottom:0;max-height:none;width:82%;max-width:300px;border-radius:0 12px 12px 0;z-index:1001;transform:translateX(-105%);transition:transform .25s;padding-top:.25rem}
+  .side.open{transform:translateX(0)}
+  .side-close{display:block}
+  .side-back.open{display:block}
+}
+
 /* CART */
 #screen-cart{display:none}
 .cart-wrap{padding:1.25rem 1.5rem;max-width:800px;margin:0 auto}
@@ -165,25 +195,30 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
   <!-- CATALOG SCREEN -->
   <div id="screen-catalog">
     <div class="catalog-wrap">
+      <button class="btn-cats" onclick="toggleSide(true)">☰ Categoría</button>
+      <div class="side-back" id="side-back" onclick="toggleSide(false)"></div>
+      <div class="catalog-layout">
+      <aside class="side" id="side">
+        <div class="side-head"><span>Categoría</span><button class="side-close" onclick="toggleSide(false)" aria-label="Cerrar">×</button></div>
+        <div id="cat-list"></div>
+      </aside>
+      <div class="catalog-main">
       <div class="filters">
         <h2>Catálogo de productos</h2>
         <div class="search-box">
           <span class="icon">🔍</span>
           <input type="text" id="search-inp" placeholder="Buscar producto, marca o código..." oninput="filterProds()">
         </div>
-        <select class="filter-sel" id="filter-cat" onchange="filterProds()">
-          <option value="">Todas las categorías</option>
-        </select>
-        <select class="filter-sel" id="filter-marca" onchange="filterProds()">
-          <option value="">Todas las marcas</option>
-        </select>
       </div>
+      <div class="sel-chip" id="sel-chip" style="display:none"></div>
       <div class="price-badge">🏷 <span id="price-label">Cargando...</span></div>
       <div class="result-count" id="result-count"></div>
       <div class="products-grid" id="products-grid">
         <div class="loading">Cargando productos...</div>
       </div>
       <div class="pagination" id="pagination"></div>
+      </div>
+      </div>
     </div>
   </div>
 
@@ -303,25 +338,65 @@ async function loadProducts(){
     }
   }
 
-  // Populate filters
-  const cats=[...new Set(allProducts.map(p=>p.categoria).filter(Boolean))].sort();
-  const marcas=[...new Set(allProducts.map(p=>p.marca).filter(Boolean))].sort();
-  const catSel=document.getElementById('filter-cat');
-  const marcaSel=document.getElementById('filter-marca');
-  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
-  marcas.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;marcaSel.appendChild(o);});
-
+  // Construir menú lateral de categorías y marcas
+  buildSide();
   filterProds();
+}
+
+let selCat='',selMarca='',catData=[];
+function buildSide(){
+  const map={};
+  allProducts.forEach(p=>{
+    if(!p.categoria) return;
+    (map[p.categoria]=map[p.categoria]||new Set());
+    if(p.marca) map[p.categoria].add(p.marca);
+  });
+  catData=Object.keys(map).sort((x,y)=>x.localeCompare(y,'es')).map(c=>({c,m:[...map[c]].sort((x,y)=>x.localeCompare(y,'es'))}));
+  selCat='';selMarca='';
+  const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  document.getElementById('cat-list').innerHTML=catData.map((d,i)=>
+    `<div class="cat-item" id="cat-${i}">
+      <button class="cat-btn" onclick="clickCat(${i})"><span>${esc(d.c)}</span><span class="arr">▶</span></button>
+      <div class="brand-list">
+        <button class="brand-btn sel" data-m="-1" onclick="clickBrand(${i},-1)">Todas las marcas</button>
+        ${d.m.map((m,j)=>`<button class="brand-btn" data-m="${j}" onclick="clickBrand(${i},${j})">${esc(m)}</button>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function markSel(i,j){
+  document.querySelectorAll('.cat-item').forEach((el,k)=>el.classList.toggle('open',k===i));
+  document.querySelectorAll('.brand-btn').forEach(b=>b.classList.remove('sel'));
+  if(i>=0){const el=document.getElementById('cat-'+i);const b=el&&el.querySelector('.brand-btn[data-m="'+j+'"]');if(b)b.classList.add('sel');}
+}
+function clickCat(i){
+  if(selCat===catData[i].c){ // segundo clic: cerrar y quitar filtro
+    selCat='';selMarca='';markSel(-1,-1);
+  } else {
+    selCat=catData[i].c;selMarca='';markSel(i,-1);
+  }
+  filterProds();
+}
+function clickBrand(i,j){
+  selCat=catData[i].c;
+  selMarca=j<0?'':catData[i].m[j];
+  markSel(i,j);
+  filterProds();
+  toggleSide(false);
+}
+function toggleSide(open){
+  document.getElementById('side').classList.toggle('open',open);
+  document.getElementById('side-back').classList.toggle('open',open);
 }
 
 function filterProds(){
   const q=(document.getElementById('search-inp').value||'').toLowerCase();
-  const cat=document.getElementById('filter-cat').value;
-  const marca=document.getElementById('filter-marca').value;
+  const cat=selCat,marca=selMarca;
   filteredProducts=allProducts.filter(p=>{
-    return(!q||p.nombre.toLowerCase().includes(q)||p.id.includes(q)||(p.marca||'').toLowerCase().includes(q))
+    return(!q||p.nombre.toLowerCase().includes(q)||String(p.id).includes(q)||(p.marca||'').toLowerCase().includes(q))
       &&(!cat||p.categoria===cat)&&(!marca||p.marca===marca);
   });
+  const chip=document.getElementById('sel-chip');
+  if(cat){chip.style.display='block';chip.textContent=cat+' › '+(marca||'Todas las marcas');}else{chip.style.display='none';}
   page=1;renderPage();
 }
 
