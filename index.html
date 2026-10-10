@@ -389,14 +389,19 @@ function toggleSide(open){
 }
 
 function filterProds(){
-  const q=(document.getElementById('search-inp').value||'').toLowerCase();
+  const q=(document.getElementById('search-inp').value||'').trim().toLowerCase();
+  const searching=q.length>0;
+  // Si hay texto en el buscador, se busca en TODO el catálogo y se reinicia el filtro de categoría/marca
+  if(searching&&(selCat||selMarca)){selCat='';selMarca='';markSel(-1,-1);}
   const cat=selCat,marca=selMarca;
   filteredProducts=allProducts.filter(p=>{
     return(!q||p.nombre.toLowerCase().includes(q)||String(p.id).includes(q)||(p.marca||'').toLowerCase().includes(q))
       &&(!cat||p.categoria===cat)&&(!marca||p.marca===marca);
   });
   const chip=document.getElementById('sel-chip');
-  if(cat){chip.style.display='block';chip.textContent=cat+' › '+(marca||'Todas las marcas');}else{chip.style.display='none';}
+  if(searching){chip.style.display='block';chip.textContent='Buscando en todo el catálogo';}
+  else if(selCat){chip.style.display='block';chip.textContent=selCat+' › '+(selMarca||'Todas las marcas');}
+  else{chip.style.display='none';}
   page=1;renderPage();
 }
 
