@@ -531,11 +531,11 @@ const COPY_STEPS=[
 
 async function copyOrder(){
   const keys=Object.keys(cart);if(!keys.length)return;
-  const lines=keys.map(id=>{
+  const lines=keys.map((id,i)=>{
     const p=allProducts.find(x=>String(x.id)===String(id));
-    return '- '+id+' - '+(p?p.nombre:'')+' - '+cart[id];
+    return (i+1)+'. Código: '+id+'\n   Nombre: '+(p?p.nombre:'')+'\n   Cantidad: '+cart[id];
   });
-  const text=lines.join('\n');
+  const text=lines.join('\n\n');
   let ok=false;
   try{await navigator.clipboard.writeText(text);ok=true;}catch(e){}
   if(!ok){
