@@ -514,9 +514,7 @@ function renderCart(){
     <div class="sum-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
     <div class="sum-total"><span>Total estimado</span><span>${fmt(sub)}</span></div>
   </div>
-  ${canSendOrder()
-    ?'<button class="btn-order" onclick="sendOrder()">Enviar pedido a Distribuciones Molina →</button>'
-    :'<button class="btn-order" onclick="copyOrder()">📋 Copiar pedido como texto al portapapeles</button>'}`;
+  <button class="btn-order" onclick="copyOrder()">📋 Copiar pedido como texto al portapapeles</button>`;
 }
 
 // Clientes con puede_enviar_pedido = false NO envían el pedido: lo copian como texto
@@ -536,7 +534,14 @@ async function copyOrder(){
     const p=allProducts.find(x=>String(x.id)===String(id));
     return (i+1)+'. Código: '+id+'\n   Nombre: '+(p?p.nombre:'')+'\n   Cantidad: '+cart[id];
   });
-  const text=lines.join('\n\n');
+  let text=lines.join('\n\n');
+  if(isVip()){
+    const u=currentUser,h=['Soy cliente VIP.'];
+    if(u.nombre) h.push('Nombre: '+u.nombre+'.');
+    if(u.cedula_nit) h.push('Cédula/NIT: '+u.cedula_nit+'.');
+    if(u.celular) h.push('Celular: '+u.celular+'.');
+    text=h.join('\n')+'\n\n'+text;
+  }
   let ok=false;
   try{await navigator.clipboard.writeText(text);ok=true;}catch(e){}
   if(!ok){
@@ -546,9 +551,10 @@ async function copyOrder(){
     }catch(e){}
   }
   if(!ok){toast('No se pudo copiar. Intenta de nuevo.');return;}
-  document.getElementById('cp-steps').innerHTML=COPY_STEPS.map(t=>'<li><span class="cp-n">'+t[0]+'</span> '+t[1]+'</li>').join('');
+  document.getElementById('cp-steps').innerHTML=(isVip()?COPY_STEPS.slice(0,3):COPY_STEPS).map(t=>'<li><span class="cp-n">'+t[0]+'</span> '+t[1]+'</li>').join('');
   document.getElementById('cp-back').classList.add('open');
 }
+function isVip(){return !!(currentUser&&currentUser.es_vip===true);}
 function closeCopied(){document.getElementById('cp-back').classList.remove('open');}
 
 async function sendOrder(){
