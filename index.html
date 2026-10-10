@@ -110,6 +110,19 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
   .side-back.open{display:block}
 }
 
+/* MODAL COPIADO */
+.cp-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;padding:16px}
+.cp-back.open{display:flex}
+.cp-card{background:#fff;border-radius:16px;max-width:440px;width:100%;padding:1.75rem 1.5rem 1.5rem;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto}
+.cp-icon{width:56px;height:56px;border-radius:50%;background:var(--gl);color:var(--gd);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px}
+.cp-title{font-size:18px;font-weight:700;text-align:center;color:#222;line-height:1.3}
+.cp-sub{font-size:14px;color:#666;text-align:center;margin:8px 0 14px}
+.cp-n{font-weight:700;color:var(--gd)}
+.cp-steps{list-style:none;margin:0 0 1.25rem;padding-left:0;font-size:14px;color:#333;line-height:1.5}
+.cp-steps li{margin-bottom:8px}
+.btn-copy{width:100%;height:46px;background:#fff;color:var(--gd);border:2px solid var(--gd);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:1rem}
+.btn-copy:hover{background:var(--gl)}
+
 /* CART */
 #screen-cart{display:none}
 .cart-wrap{padding:1.25rem 1.5rem;max-width:800px;margin:0 auto}
@@ -245,6 +258,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
   </div>
 </div>
 
+<div class="cp-back" id="cp-back">
+  <div class="cp-card">
+    <div class="cp-icon">✓</div>
+    <div class="cp-title">Tu pedido ha sido copiado como texto al portapapeles.</div>
+    <div class="cp-sub">¿Qué hacer ahora? Mira los pasos a seguir:</div>
+    <ul class="cp-steps" id="cp-steps"></ul>
+    <button class="btn-login" onclick="closeCopied()">Entendido</button>
+    <button class="btn-copy" onclick="copyOrder()">Copiar de nuevo</button>
+  </div>
+</div>
 <div class="toast" id="toast-el"></div>
 
 <script>
@@ -490,8 +513,42 @@ function renderCart(){
     <div class="sum-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
     <div class="sum-total"><span>Total estimado</span><span>${fmt(sub)}</span></div>
   </div>
-  <button class="btn-order" onclick="sendOrder()">Enviar pedido a Distribuciones Molina →</button>`;
+  ${canSendOrder()
+    ?'<button class="btn-order" onclick="sendOrder()">Enviar pedido a Distribuciones Molina →</button>'
+    :'<button class="btn-order" onclick="copyOrder()">📋 Copiar pedido como texto al portapapeles</button>'}`;
 }
+
+// Clientes con puede_enviar_pedido = false NO envían el pedido: lo copian como texto
+function canSendOrder(){return !(currentUser&&currentUser.puede_enviar_pedido===false);}
+
+// Pasos que ve el cliente después de copiar el pedido ([título, texto]; edita aquí)
+const COPY_STEPS=[
+  ['Paso 1:','Abre WhatsApp.'],
+  ['Paso 2:','Escribe al siguiente número: <strong>3222881890</strong>'],
+  ['Paso 3:','Pega tu pedido que está copiado al portapapeles y envíalo.'],
+  ['Paso 4:','Identifícate: escribe tu nombre, cédula/NIT, el nombre de tu negocio, municipio/departamento.']
+];
+
+async function copyOrder(){
+  const keys=Object.keys(cart);if(!keys.length)return;
+  const lines=keys.map(id=>{
+    const p=allProducts.find(x=>String(x.id)===String(id));
+    return '- '+id+' - '+(p?p.nombre:'')+' - '+cart[id];
+  });
+  const text=lines.join('\n');
+  let ok=false;
+  try{await navigator.clipboard.writeText(text);ok=true;}catch(e){}
+  if(!ok){
+    try{
+      const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.focus();ta.select();ok=document.execCommand('copy');document.body.removeChild(ta);
+    }catch(e){}
+  }
+  if(!ok){toast('No se pudo copiar. Intenta de nuevo.');return;}
+  document.getElementById('cp-steps').innerHTML=COPY_STEPS.map(t=>'<li><span class="cp-n">'+t[0]+'</span> '+t[1]+'</li>').join('');
+  document.getElementById('cp-back').classList.add('open');
+}
+function closeCopied(){document.getElementById('cp-back').classList.remove('open');}
 
 async function sendOrder(){
   const keys=Object.keys(cart);if(!keys.length)return;
