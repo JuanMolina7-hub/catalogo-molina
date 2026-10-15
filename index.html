@@ -148,6 +148,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
 
 /* LOADING */
 .loading{text-align:center;padding:3rem;color:#888}
+.loading::before{content:'';display:block;width:34px;height:34px;margin:0 auto 12px;border:3.5px solid #d6e9e0;border-top-color:var(--gd);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.is-loading{position:relative;pointer-events:none;color:transparent!important}
+.is-loading>*{visibility:hidden}
+.is-loading::after{content:'';position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.btn-back.is-loading::after,.btn-copy.is-loading::after,.btn-cats.is-loading::after{border-color:rgba(15,110,86,.25);border-top-color:var(--gd)}
+.boot{position:fixed;inset:0;background:#f4f6f4;z-index:20000;display:flex;align-items:center;justify-content:center}
+.boot::before{content:'';width:42px;height:42px;border:4px solid #d6e9e0;border-top-color:var(--gd);border-radius:50%;animation:spin .8s linear infinite}
+.qty-input{flex:1;min-width:0;width:100%;height:28px;border:1px solid #ddd;border-radius:6px;text-align:center;font-size:13px;font-weight:600;background:#fff}
+.qty-input:focus{outline:none;border-color:var(--gd)}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--gd);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .3s;z-index:999;pointer-events:none}
@@ -159,6 +169,9 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
   .catalog-wrap,.cart-wrap{padding:1rem}
   .products-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
   .filters h2{font-size:14px}
+  .cart-item{flex-wrap:wrap}
+  .ci-info{flex:1 1 100%}
+  .cart-item .qty-ctrl{padding:0;flex:1}
 }
 </style>
 </head>
@@ -181,7 +194,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
       <label>Contraseña</label>
       <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <button class="btn-login" onclick="doLogin()">Ingresar al catálogo</button>
+    <button class="btn-login" id="btn-login" onclick="doLogin()">Ingresar al catálogo</button>
     <div class="error-msg" id="err-msg"></div>
   </div>
 </div>
@@ -198,11 +211,11 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
     </div>
     <div class="nav-right">
       <span class="nav-user" id="nav-user-label"></span>
-      <button class="btn-cart" onclick="showCart()">
+      <button class="btn-cart" onclick="withSpin(this,showCart)">
         🛒 <span id="cart-label">Pedido</span>
         <span class="cart-badge" id="cart-badge" style="display:none">0</span>
       </button>
-      <button class="btn-logout" onclick="logout()">Salir</button>
+      <button class="btn-logout" onclick="withSpin(this,logout)">Salir</button>
     </div>
   </div>
 
@@ -240,7 +253,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
   <div id="screen-cart" style="display:none">
     <div class="cart-wrap">
       <div class="cart-back">
-        <button class="btn-back" onclick="showCatalog()">← Seguir comprando</button>
+        <button class="btn-back" onclick="withSpin(this,showCatalog,250)">← Seguir comprando</button>
         <span style="font-size:16px;font-weight:600">Mi pedido</span>
       </div>
       <div id="cart-items-container"></div>
@@ -266,9 +279,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;background:#f4f6f4;c
     <div class="cp-sub">¿Qué hacer ahora? Mira los pasos a seguir:</div>
     <ul class="cp-steps" id="cp-steps"></ul>
     <button class="btn-login" onclick="closeCopied()">Entendido</button>
-    <button class="btn-copy" onclick="copyOrder()">Copiar de nuevo</button>
+    <button class="btn-copy" onclick="copyOrder(this)">Copiar de nuevo</button>
   </div>
 </div>
+<div class="boot" id="boot"></div>
 <div class="toast" id="toast-el"></div>
 
 <script>
@@ -280,6 +294,31 @@ let currentUser = null, currentList = 'B';
 let allProducts = [], filteredProducts = [], allPrices = {};
 let cart = {}, page = 1;
 const PER_PAGE = 24;
+
+// ---- Almacenamiento local (sesión y carrito) ----
+const SESSION_KEY='molina_session';
+const cartKey=()=>'molina_cart_'+(currentUser?currentUser.usuario:'');
+const placedKey=()=>'molina_placed_'+(currentUser?currentUser.usuario:'');
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
+// Cualquier cambio en el carrito lo guarda y anula la marca de "pedido realizado"
+function saveCart(){lsSet(cartKey(),JSON.stringify(cart));lsDel(placedKey());}
+function loadCart(){
+  cart={};
+  try{
+    const o=JSON.parse(lsGet(cartKey())||'{}');
+    Object.keys(o).forEach(id=>{const n=parseInt(o[id],10);if(n>0)cart[id]=Math.min(n,99999);});
+  }catch(e){cart={};}
+}
+
+// ---- Ícono de carga en botones ----
+function setBusy(btn,on){if(btn)btn.classList.toggle('is-loading',!!on);}
+function withSpin(btn,fn,ms){
+  setBusy(btn,true);
+  setTimeout(()=>{try{fn();}finally{setBusy(btn,false);}},ms||350);
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 const LIST_NAMES = {
   'CAQUETA':'Lista Caquetá',
@@ -308,22 +347,43 @@ function showCatalog(){
   document.getElementById('screen-catalog').style.display='block';
 }
 
-async function doLogin(){
-  const u=document.getElementById('inp-user').value.trim().toLowerCase();
-  const p=document.getElementById('inp-pass').value.trim();
-  document.getElementById('err-msg').textContent='';
-  if(!u||!p){document.getElementById('err-msg').textContent='Ingresa usuario y contraseña';return;}
+async function startSession(u,p){
   const{data,error}=await sb.from('clientes').select('*').eq('usuario',u).eq('password_hash',p).eq('activo',true).single();
-  if(error||!data){document.getElementById('err-msg').textContent='Usuario o contraseña incorrectos';return;}
+  if(error&&error.code!=='PGRST116') throw error;      // error de conexión
+  if(error||!data) return false;                        // usuario o contraseña incorrectos
   currentUser=data;
   currentList=data.lista_precios||'B';
+  loadCart();
   document.getElementById('nav-user-label').textContent=data.nombre;
   document.getElementById('price-label').textContent=(LIST_NAMES[currentList]||currentList)+' — '+data.nombre;
+  await loadProducts();                                 // se espera a que cargue todo el catálogo
+  showCatalog();
   show('screen-main');
-  await loadProducts();
+  updateCartBadge();
+  return true;
+}
+
+async function doLogin(){
+  const btn=document.getElementById('btn-login');
+  const err=document.getElementById('err-msg');
+  const u=document.getElementById('inp-user').value.trim().toLowerCase();
+  const p=document.getElementById('inp-pass').value.trim();
+  err.textContent='';
+  if(!u||!p){err.textContent='Ingresa usuario y contraseña';return;}
+  setBusy(btn,true);
+  try{
+    const ok=await startSession(u,p);
+    if(ok) lsSet(SESSION_KEY,JSON.stringify({u,p}));
+    else err.textContent='Usuario o contraseña incorrectos';
+  }catch(e){
+    err.textContent='No se pudo conectar. Revisa tu internet e intenta de nuevo.';
+  }finally{setBusy(btn,false);}
 }
 
 function logout(){
+  // El carrito solo se borra si el cliente ya pulsó "Realizar pedido" y no lo modificó después
+  if(currentUser&&lsGet(placedKey())==='1'){lsDel(cartKey());lsDel(placedKey());}
+  lsDel(SESSION_KEY);
   currentUser=null;cart={};allProducts=[];allPrices={};
   updateCartBadge();
   show('screen-login');
@@ -362,6 +422,12 @@ async function loadProducts(){
     }
   }
 
+  // Quitar del carrito guardado los productos que ya no están en el catálogo
+  if(allProducts.length){
+    const valid=new Set(allProducts.map(p=>String(p.id)));let changed=false;
+    Object.keys(cart).forEach(id=>{if(!valid.has(String(id))){delete cart[id];changed=true;}});
+    if(changed)lsSet(cartKey(),JSON.stringify(cart));
+  }
   // Construir menú lateral de categorías y marcas
   buildSide();
   filterProds();
@@ -459,7 +525,7 @@ function renderPage(){
       </div>
       ${price===0?'':(inCart===0
         ?`<button class="btn-add" onclick="addCart('${p.id}')">+ Agregar al pedido</button>`
-        :`<div class="qty-ctrl"><button class="qty-btn" onclick="chgQ('${p.id}',-1)">−</button><span class="qty-val">${inCart}</span><button class="qty-btn" onclick="chgQ('${p.id}',1)">+</button></div>
+        :`<div class="qty-ctrl"><button class="qty-btn" onclick="chgQ('${p.id}',-1)">−</button><input class="qty-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="${inCart}" aria-label="Cantidad" oninput="this.value=this.value.replace(/\D/g,'')" onfocus="this.select()" onkeydown="if(event.key==='Enter')this.blur()" onchange="setQ('${p.id}',this.value)"><button class="qty-btn" onclick="chgQ('${p.id}',1)">+</button></div>
           <button class="qty-rm" onclick="chgQ('${p.id}',-${inCart})">Quitar del pedido</button>`
       )}
     </div>`;
@@ -481,8 +547,15 @@ function renderPag(){
 }
 function goP(p){page=p;renderPage();window.scrollTo(0,0);}
 
-function addCart(id){cart[id]=(cart[id]||0)+1;updateCartBadge();renderPage();}
-function chgQ(id,d){cart[id]=(cart[id]||0)+d;if(cart[id]<=0)delete cart[id];updateCartBadge();renderPage();}
+function addCart(id){cart[id]=Math.min((cart[id]||0)+1,99999);saveCart();updateCartBadge();renderPage();}
+function chgQ(id,d){cart[id]=Math.min((cart[id]||0)+d,99999);if(cart[id]<=0)delete cart[id];saveCart();updateCartBadge();renderPage();}
+// Cantidad escrita a mano: solo acepta enteros >= 1; si no es válida se restaura la anterior
+function setQ(id,v,inCartScreen){
+  const n=parseInt(String(v).replace(/\D/g,''),10);
+  if(n>=1){cart[id]=Math.min(n,99999);saveCart();updateCartBadge();}
+  renderPage();
+  if(inCartScreen)renderCart();
+}
 function updateCartBadge(){
   const t=Object.values(cart).reduce((a,b)=>a+b,0);
   const b=document.getElementById('cart-badge');
@@ -500,9 +573,9 @@ function renderCart(){
     const price=allPrices[String(id)]||0;const qty=cart[id];const line=price*qty;sub+=line;
     return`<div class="cart-item">
       <div class="ci-info"><div class="ci-name">${p.nombre}</div><div class="ci-sub">${p.categoria||''} · ${p.marca||''}</div></div>
-      <div class="qty-ctrl" style="min-width:80px">
+      <div class="qty-ctrl" style="min-width:130px">
         <button class="qty-btn" onclick="chgQ('${id}',-1);renderCart()">−</button>
-        <span class="qty-val">${qty}</span>
+        <input class="qty-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" value="${qty}" aria-label="Cantidad" oninput="this.value=this.value.replace(/\D/g,'')" onfocus="this.select()" onkeydown="if(event.key==='Enter')this.blur()" onchange="setQ('${id}',this.value,true)">
         <button class="qty-btn" onclick="chgQ('${id}',1);renderCart()">+</button>
       </div>
       <div class="ci-price">${fmt(line)}</div>
@@ -514,7 +587,7 @@ function renderCart(){
     <div class="sum-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>
     <div class="sum-total"><span>Total estimado</span><span>${fmt(sub)}</span></div>
   </div>
-  <button class="btn-order" onclick="copyOrder()">📋 Copiar pedido como texto al portapapeles</button>`;
+  <button class="btn-order" onclick="copyOrder(this)">Realizar pedido</button>`;
 }
 
 // Clientes con puede_enviar_pedido = false NO envían el pedido: lo copian como texto
@@ -528,8 +601,9 @@ const COPY_STEPS=[
   ['Paso 4:','Identifícate: escribe tu nombre, cédula/NIT, el nombre de tu negocio, municipio/departamento.']
 ];
 
-async function copyOrder(){
+async function copyOrder(btn){
   const keys=Object.keys(cart);if(!keys.length)return;
+  setBusy(btn,true);await sleep(450);
   const lines=keys.map((id,i)=>{
     const p=allProducts.find(x=>String(x.id)===String(id));
     return (i+1)+'. Código: '+id+'\n   Nombre: '+(p?p.nombre:'')+'\n   Cantidad: '+cart[id];
@@ -550,7 +624,9 @@ async function copyOrder(){
       document.body.appendChild(ta);ta.focus();ta.select();ok=document.execCommand('copy');document.body.removeChild(ta);
     }catch(e){}
   }
+  setBusy(btn,false);
   if(!ok){toast('No se pudo copiar. Intenta de nuevo.');return;}
+  lsSet(placedKey(),'1');   // pedido realizado: el carrito se borrará al cerrar sesión
   document.getElementById('cp-steps').innerHTML=(isVip()?COPY_STEPS.slice(0,3):COPY_STEPS).map(t=>'<li><span class="cp-n">'+t[0]+'</span> '+t[1]+'</li>').join('');
   document.getElementById('cp-back').classList.add('open');
 }
@@ -568,6 +644,22 @@ async function sendOrder(){
   cart={};updateCartBadge();
   show('screen-success');
 }
+// Al abrir o recargar la página: si hay sesión guardada, entrar directamente al catálogo
+(async function restoreSession(){
+  const boot=document.getElementById('boot');
+  const hide=()=>{if(boot)boot.style.display='none';};
+  const raw=lsGet(SESSION_KEY);
+  if(!raw){hide();return;}
+  try{
+    const o=JSON.parse(raw);
+    const ok=await startSession(o.u,o.p);
+    if(!ok) lsDel(SESSION_KEY);          // el usuario fue desactivado o cambió la contraseña
+  }catch(e){
+    document.getElementById('err-msg').textContent='No se pudo conectar. Revisa tu internet e intenta de nuevo.';
+  }
+  hide();
+})();
+
 function backToCatalog(){show('screen-main');showCatalog();}
 
 function toast(msg){
